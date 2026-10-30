@@ -1,0 +1,7 @@
+# Variante usada en el laboratorio sin acceso a Docker Hub:
+# el binario se compila antes con  CGO_ENABLED=0 go build -o tienda .
+FROM scratch
+COPY tienda /tienda
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/tienda"]

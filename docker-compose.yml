@@ -1,0 +1,45 @@
+# Simulación local de la arquitectura en la nube.
+# En Google Cloud cada servicio sería un servicio de Cloud Run.
+name: tienda-nube
+
+x-servicio: &servicio
+  image: tienda-nube:1.0
+  build: .                  # Dockerfile multietapa
+  restart: unless-stopped
+  env_file: .env            # en Google Cloud: secreto leído desde Secret Manager
+  networks: [interna]
+
+services:
+  gateway:
+    <<: *servicio
+    environment: { ROL: gateway }
+    ports: ["8080:8080"]     # único punto de entrada publicado
+    depends_on: [usuarios, catalogo, pedidos]
+
+  usuarios:
+    <<: *servicio
+    environment: { ROL: usuarios }
+
+  catalogo:
+    <<: *servicio
+    environment: { ROL: catalogo, CAPACIDAD: "4", TRABAJO_MS: "50", PERMITIR_FALLA: "1" }
+    deploy:
+      replicas: 1            # se escala con: docker compose up -d --scale catalogo=3
+
+  pedidos:
+    <<: *servicio
+    environment: { ROL: pedidos }
+    deploy:
+      replicas: 2
+
+  datos:
+    <<: *servicio
+    environment: { ROL: datos, RUTA_DATOS: /datos/estado.json }
+    user: "0:0"              # escribe en el volumen
+    volumes: [datos-tienda:/datos]
+
+volumes:
+  datos-tienda:
+
+networks:
+  interna:
